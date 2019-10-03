@@ -4,3 +4,5 @@
 ## Purpose:   Run process to locate position 
 ##            based on wifi-fingerprints
 #########################################################################
+
+#import data
