@@ -85,4 +85,25 @@ VData %>%
   arrange(VData %>% filter(round(LONGITUDE,0)== -7395 & round(LATITUDE,0)==4864837 
                            & WAPSignal!=0 & FLOOR==3),-WAPSignal)
   
+  #specific area
+  arrange(VData %>% filter(LONGITUDE> -7450 & LONGITUDE< -7370 & 
+                             LATITUDE>4864800 & LATITUDE<4864820 ),-WAPSignal)
+  
+  #max per obeservationID
+  MaxSignals <- VData %>% group_by(ObservationID) %>% summarise(MaxSignal = max(WAPSignal)) 
+  MaxWap <-MaxSignals %>% 
+    filter(MaxSignal!=0) %>% 
+    left_join(VData,c("ObservationID"="ObservationID","MaxSignal"="WAPSignal")) %>%
+    select (ObservationID, MaxSignal, WAP, LONGITUDE, LATITUDE, BUILDINGID, FLOOR)
+  
+  # no signal records
+  NoSignalIDs <- VData %>% 
+                    group_by(ObservationID) %>% 
+                    summarise(MaxSignal = max(WAPSignal)) %>%
+                    filter(MaxSignal==0) %>%
+                    select(ObservationID)
+  
+  NoSignal <-DataAllBuildings[NoSignalIDs$ObservationID,]
+  
+  DataAllBuildings <- DataAllBuildings[-NoSignalIDs$ObservationID,]
   
