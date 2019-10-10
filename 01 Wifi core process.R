@@ -8,78 +8,83 @@
 ##            03 Data selection
 ##            04 Modelling & Prediction
 ##            05 Analysing
+##            06 Validation
 #########################################################################
 
-#import libraries
+# import libraries
 library(dplyr)
 library(caret)
 library(corrplot)
 
 
-#import data
+# import data
 DataAllBuildings <- read.csv('../Data/trainingData.csv')
 
 # add unique row ID for reference
 DataAllBuildings$ObservationID <- seq_len(nrow(DataAllBuildings))
 
-# create vertical dataframe for analysing and query purposes
-
-
-#Divide dataset in smaller sets per building
+# Divide dataset in smaller sets per building
 #DataBuilding0 <- ExtractData1Building(DataAllBuildings, BuildingID = 0)
 #DataBuilding1 <- ExtractData1Building(DataAllBuildings, BuildingID = 1)
 #DataBuilding2 <- ExtractData1Building(DataAllBuildings, BuildingID = 2)
 
-#summarize data
+# summarize data
 #DataB0_FloorSpaces <- DataBuilding0 %>% group_by(FLOOR, SPACEID) %>% summarise(obs=n())
 
-#select small part of data
+# select small part of data
 #Spacelist <- c(106,116,120)
 #Spacelist <- c(106,116,120,107,110,111,112)
 #Spacelist <- c(106,116,120,107,110,111,112,113,114,115)
 #DataB0_F0_Spaces <- ExtractData1FloorSpace(DataBuilding0, FloorID = 0,Spacelist)
 
-#rescale RSSI value
+# rescale RSSI value
 #DataB0_F0_Spaces <- RescaleRSSI(DataB0_F0_Spaces)
 #DataBuilding0 <- RescaleRSSI(DataBuilding0)
 DataAllBuildings <- RescaleRSSI(DataAllBuildings)
 
+# create vertical dataframe for analysing and query purposes
+VertData <- ConvertToVerticalData(DataAllBuildings)
+
+# find maximum signal per observationID
+MaxSignals <- VertData %>% 
+                group_by(ObservationID) %>% 
+                summarise(MaxSignal = max(WAPSignal)) 
+
+
 # Define ID's of records with no WAP signal 
-NoSignalIDs <- VData %>% 
-  group_by(ObservationID) %>% 
-  summarise(MaxSignal = max(WAPSignal)) %>%
+NoSignalIDs <- MaxSignals %>%
   filter(MaxSignal==0) %>%
   select(ObservationID)
 
 # records without signal
-NoSignal <-DataAllBuildings[NoSignalIDs$ObservationID,]
+#NoSignal <-DataAllBuildings[NoSignalIDs$ObservationID,]
 
-#remove records without signal from data
+# remove records without signal from data
 DataAllBuildings <- DataAllBuildings[-NoSignalIDs$ObservationID,]
 
+# find WAP's with maximum signal per observationID
+MaxWap <- MaxSignals %>% 
+            filter(MaxSignal!=0) %>% 
+            left_join(VertData,c("ObservationID"="ObservationID",
+                                 "MaxSignal"="WAPSignal")) %>%
+            select (ObservationID, MaxSignal, WAP, LONGITUDE, LATITUDE, 
+                    BUILDINGID, FLOOR)
 
-#Add WAP with maximum signal
-MaxWapObs <- as.data.frame(MaxWap %>% group_by(ObservationID) %>% filter(row_number()==1) %>% 
-  select(ObservationID,WAP)) %>% rename(MaxWap = WAP) #slice(1)
+
+# Add WAP with maximum signal to full dataset. 
+# if more then 1 WAP with max signal, system chooses 1 
+MaxWapObs <- MaxWap %>% 
+                group_by(ObservationID) %>% 
+                filter(row_number()==1) %>% 
+                select(ObservationID,WAP) %>% 
+                rename(MaxWap = WAP) 
 DataAllBuildings <- DataAllBuildings %>% left_join(MaxWapObs,"ObservationID")
 
-
-
-#Minimum level relevant
+# Minimum level relevant
 #DataAllBuildings <- ApplyMinimumSignal(DataAllBuildings,20)  
 
-WAP = "WAP496"
-Data1WAP <- ExtractData1WAP(DataAllBuildings, WAP)
-
 #define dataset for modelling
-#DataModel <-DataAllBuildings
-DataModel <- Data1WAP
-
-
-
-#remove attributes not needed for modelling
-DataModel<- DataModel[, !names(DataModel) %in% 
-                                c( "SPACEID","RELATIVEPOSITION","USERID","PHONEID","TIMESTAMP")]
+DataModel <-DataAllBuildings
 
 #create training and test set
 set.seed(455)
@@ -90,14 +95,72 @@ training_indices<-sample(seq_len(nrow(DataModel)),size =trainSize)
 training <- DataModel[training_indices,]
 testing <- DataModel[-training_indices,]
 
+
+#################################################
+
+##### Linear Regression for MAX WAP
+
+
+# List WAP's in test and train-set which are a maximum (and need to be trained)
+TestingMaxWAP   <-  testing %>% 
+                      group_by(MaxWap) %>% 
+                      summarise(TimesTest = n())
+TrainingMaxWAP  <-  training %>% 
+                      group_by(MaxWap) %>% 
+                      summarise(TimesTrain = n())
+# add them together
+TestingMaxWAP   <-  TestingMaxWAP %>% 
+                      left_join(TrainingMaxWap,"MaxWap")
+
+# loop through all maximum WAP's of testing set
+LoopRow <- 1
+while(LoopRow<=nrow(TestingMaxWAP)) {
+  # set WAP for which to do modelling and predicting
+  WAP = as.character(TestingMaxWAP[LoopRow,1])
+  print(WAP)
+  # reduce trainingset based on current WAP
+  Training1WAP <- ExtractData1WAP(training, WAP,0)
+  print(WAP)
+  # reduce testing set based on current WAP and structure training set
+  TrainingAttributes <-colnames(Training1WAP)
+  Testing1WAP <- FilterTestingForWAP(testing, TrainingAttributes,WAP)
+  #apply linear model
+  RegModelLong <- lm(LONGITUDE ~ . - LATITUDE - FLOOR - BUILDINGID - ObservationID - MaxWap -
+                       SPACEID - RELATIVEPOSITION - USERID - PHONEID - TIMESTAMP, Training1WAP )
+  RegModelLat <- lm(LATITUDE ~ . -LONGITUDE - FLOOR - BUILDINGID - ObservationID - MaxWap -
+                       SPACEID - RELATIVEPOSITION - USERID - PHONEID - TIMESTAMP, Training1WAP)
+  # predict values for test set
+  RegPredictLong <- predict(RegModelLong,Testing1WAP)
+  RegPredictLat <- predict(RegModelLat,Testing1WAP)  
+  Testing1WAPBuilding <- CalculatePredictedBuilding(Testing1WAP, RegPredictLong, RegPredictLat)
+  Testing1WAPSelection <- Testing1WAPBuilding %>% 
+                            select(ObservationID, PredictLong, PredictLat, LongError, LatError,
+                                   PredictBuilding, BuildingError)
+  ifelse(LoopRow==1,
+    TestingAllWAP <- Testing1WAPSelection,
+    TestingAllWAP <- rbind(TestingAllWAP, Testing1WAPSelection))
+  LoopRow=LoopRow+1
+}
+TestingRegWAPBuilding <- testing %>% left_join(TestingAllWAP,"ObservationID")
+
+
+#################################################
+
+##### Linear Regression Full Dataset
+
+#define dataset for modelling
+DataModel <-DataAllBuildings
+
+#remove attributes not needed for modelling
+DataModel<- DataModel[, !names(DataModel) %in% 
+                                c( "SPACEID","RELATIVEPOSITION","USERID","PHONEID","TIMESTAMP")]
+
+
 #apply linear model
 RegModelLong <- lm(LONGITUDE ~ . - LATITUDE - FLOOR - BUILDINGID - ObservationID - MaxWap,
                    training )
 RegModelLat <- lm(LATITUDE ~ . -LONGITUDE - FLOOR - BUILDINGID - ObservationID - MaxWap, 
                   training)
-
-#predict only for records with same Max WAP
-testing <- testing %>% filter(MaxWap==WAP)
 
 # predict values for test set
 RegPredictLong <- predict(RegModelLong,testing)
@@ -107,10 +170,12 @@ RegPredictLat <- predict(RegModelLat,testing)
 postResample(testing$LONGITUDE,RegPredictLong)
 postResample(testing$LATITUDE,RegPredictLat)
 
-# Analyse predictions and errors
-
+# Calculate errors and building
 TestingRegBuilding <- CalculatePredictedBuilding(testing, RegPredictLong, RegPredictLat)
 
+#################################################
+
+##### KNN Full Dataset
 
 
 #KNN
@@ -130,12 +195,9 @@ KNNModelLat <- train(LATITUDE ~ . - LONGITUDE - FLOOR - BUILDINGID - Observation
                       preProcess = c("center","scale"), 
                       tuneLength = 10)
 
-
-
 #KNN prediction & results
 KNNPredictLong <- predict(KNNModelLong, newdata = testing)
 KNNPredictLat <- predict(KNNModelLat, newdata = testing)
-
 
 postResample(testing$LONGITUDE,KNNPredictLong)
 postResample(testing$LATITUDE,KNNPredictLat)
@@ -147,30 +209,32 @@ TestingKNNBuilding <- CalculatePredictedBuilding(testing, KNNPredictLong, KNNPre
 ##Analyse errors
 
 TestingResults <- TestingRegBuilding
+TestingResults <- TestingRegWAPBuilding
 #TestingResults <- TestingKNNBuilding
 
-# count errors in building
+# count errors per building
 TestingResults %>% group_by(BUILDINGID) %>% 
   summarise(obs =n(), Buildingerrors=sum(BuildingError), rate=1-sum(BuildingError)/n())
 
+# count errors in total
 TestingResults %>% 
   summarise(obs =n(), Buildingerrors=sum(BuildingError), rate=1-sum(BuildingError)/n())
 
 
-CompareResults %>% filter(LONGITUDE> -7450 & LONGITUDE< -7370 & 
+# filter data on location
+TestingResults %>% filter(LONGITUDE> -7450 & LONGITUDE< -7370 & 
                             LATITUDE>4864800 & LATITUDE<4864820 & BuildingError==1 )
 
-
-CompareResults %>% group_by(LONGITUDE, LATITUDE, BuildingError) %>% 
+# errors per specific location
+TestingResults %>% group_by(LONGITUDE, LATITUDE, BuildingError) %>% 
   summarise(number =n()) %>% 
   filter(LONGITUDE> -7450 & LONGITUDE< -7370 & 
            LATITUDE>4864800 & LATITUDE<4864820 & BuildingError==1 )
 
-CompareResults %>% filter(round(LONGITUDE,3)==-7404.836) %>% 
-  select (BuildingError, LONGITUDE, LATITUDE,FLOOR, RegPredictLong, RegPredictLat, WAP484, WAP342, WAP398,WAP286, WAP082, WAP083)
-
 
 # visualize errors
+
+# actual location building
 ggplot(TestingResults %>% filter(abs(LongError) > 0 ), 
        aes(x=LONGITUDE, y=LATITUDE, color=BuildingError)) +
   geom_point(size=2, shape=23) + 
@@ -181,14 +245,7 @@ ggplot(TestingResults %>% filter(abs(LongError) > 0 ),
   #ylim(4864600, 4865000)
 
 
-
-ggplot(TestingResults %>% filter(abs(LongError) > 0 ), 
-       aes(x=PredictLong, y=PredictLat, color=LongError)) +
-  geom_point(size=2, shape=23) +
-  xlim(-7700,-7300) +
-  ylim(4864700, 4865100)
-
-
+#predicted location
 ggplot(TestingResults %>% filter(abs(LongError) > 0 ), 
        aes(x=PredictLong, y=PredictLat, color=BuildingError)) +
   geom_point(size=2, shape=23) + 
@@ -200,44 +257,14 @@ ggplot(TestingResults %>% filter(abs(LongError) > 0 ),
 
 
 
-
-
 # ideas:
 # Convert signal to log
 # Only include strong signals
-# Validate locations
+
 
 # to do:
-# plot errors
-# Validate locations
+# user 6 & 14
+# predict floor
+# validation data
 # source function
 # Rmarkdown
-
-006 195
-450
-425,430
-
-
-meeste x maxwap
-1 WAP011   504
-2 WAP121   425
-3 WAP496   397
-4 WAP495   381
-5 WAP203   369
-6 WAP065   365
-7 WAP489   361
-
-****************
-  met meerdere buildings
-1 WAP046      2
-2 WAP113      2
-3 WAP172      2
-4 WAP173      2
-5 WAP175      2
-6 WAP180      2
-7 WAP181      2
-8 WAP189      2
-9 WAP248      3
-10 WAP369      2
-11 WAP503      2
-
