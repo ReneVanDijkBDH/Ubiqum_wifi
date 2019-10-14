@@ -15,14 +15,16 @@ TestingMaxWAP   <-  TestingMaxWAP %>%
   left_join(TrainingMaxWap,"MaxWap")
 
 # loop through all maximum WAP's of testing set
-LoopRow <- 123
+LoopRow <- 1
 while(LoopRow<=nrow(TestingMaxWAP)) {
-  # set WAP for which to do modelling and predicting
+#while(LoopRow<=130) {
+    # set WAP for which to do modelling and predicting
   WAP = as.character(TestingMaxWAP[LoopRow,1])
   print(WAP)
   
   # reduce trainingset based on current WAP
   Training1WAP <- ExtractData1WAP(training, WAP,0)
+  if(nrow(Training1WAP)>0){
   
   # reduce testing set based on current WAP and structure training set
   TrainingAttributes <-colnames(Training1WAP)
@@ -44,6 +46,7 @@ while(LoopRow<=nrow(TestingMaxWAP)) {
   ifelse(LoopRow==1,
          TestingAllWAP <- Testing1WAPSelection,
          TestingAllWAP <- rbind(TestingAllWAP, Testing1WAPSelection))
+  }
   LoopRow=LoopRow+1
 }
 TestingResult <- testing %>% left_join(TestingAllWAP,"ObservationID")

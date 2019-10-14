@@ -42,6 +42,33 @@ DataAllBuildings$ObservationID <- seq_len(nrow(DataAllBuildings))
 #DataBuilding0 <- RescaleRSSI(DataBuilding0)
 DataAllBuildings <- RescaleRSSI(DataAllBuildings)
 
+#define dataset for modelling
+DataModel <-DataAllBuildings
+
+#create training and test set
+set.seed(455)
+trainSize<-round(nrow(DataModel)*0.75) 
+training_indices<-sample(seq_len(nrow(DataModel)),size =trainSize)
+
+# create training and test datasets
+training <- DataModel[training_indices,]
+testing <- DataModel[-training_indices,]
+
+# Vertical data-set of Training
+trainingVert <- ConvertToVerticalData(training)
+
+# identify WAP used for modelling
+training <- RankTraining(training, trainingVert)
+  
+
+
+
+
+
+RegModelList <- vector(mode="list", length=520)
+
+
+
 # create vertical dataframe for analysing and query purposes
 VertData <- ConvertToVerticalData(DataAllBuildings)
 
@@ -255,6 +282,18 @@ ggplot(TestingResults %>% filter(abs(LongError) > 0 ),
   xlim(-7700,-7300) +
   ylim(4864700, 4865100)
 
+#R2 Longitude & latitude
+cor(TestingResults$LONGITUDE,TestingResults$PredictLong)^2
+cor(TestingResults$LATITUDE,TestingResults$PredictLat)^2
+
+# Results per building
+ResultsB0 <- TestingResults %>% filter(BUILDINGID==0)
+ResultsB1 <- TestingResults %>% filter(BUILDINGID==1)
+ResultsB2 <- TestingResults %>% filter(BUILDINGID==2)
+
+cor(ResultsB0$LATITUDE,ResultsB0$PredictLat)^2
+cor(ResultsB1$LATITUDE,ResultsB1$PredictLat)^2
+cor(ResultsB2$LATITUDE,ResultsB2$PredictLat)^2
 
 
 # ideas:

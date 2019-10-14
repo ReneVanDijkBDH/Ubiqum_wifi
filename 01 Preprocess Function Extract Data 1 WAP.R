@@ -7,9 +7,9 @@
 #########################################################################
 
 ExtractData1WAP <- function(DataSignals, WAP, MaxOnly){
-  DataSignals<-training
-  WAP="WAP158"
-  MaxOnly<-0
+  #DataSignals<-training
+  #WAP="WAP158"
+  #MaxOnly<-0
   
   
   # Extract ColumnID of WAP

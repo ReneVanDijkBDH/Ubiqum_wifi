@@ -19,13 +19,23 @@ ConvertToVerticalData <- function(HData) {
   while(LoopCol< ncol(HData)) {
     #if columname start with WAP... then add to vertical dataframe
     if(substr(colnames(HData[LoopCol]),1,3)=="WAP") {
+      print(colnames(HData[LoopCol]))
       tempData <- FixedAttributes
       tempData$WAP <- colnames(HData[LoopCol])
       tempData$WAPSignal <-  HData[,LoopCol]
+      
+      #remove all records without signal
+      tempdata <- tempData %>% filter(WAPSignal>0)
+      
+      #rank data based on max signal
+      #arrange(tempData,-WAPSignal)
+      #tempData$Rank <- seq_len(nrow(tempData))
+      
+      #add to total dataset
       ifelse(LoopCol==1,
             VData <- tempData,
             VData <- rbind(VData, tempData))
-      #print(LoopCol)
+      
     }
     LoopCol=LoopCol+1
   }
