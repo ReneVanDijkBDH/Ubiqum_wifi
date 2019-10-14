@@ -54,18 +54,22 @@ training_indices<-sample(seq_len(nrow(DataModel)),size =trainSize)
 training <- DataModel[training_indices,]
 testing <- DataModel[-training_indices,]
 
-# Vertical data-set of Training
-trainingVert <- ConvertToVerticalData(training)
+# Vertical data-set of Training 
+#trainingVert <- ConvertToVerticalData(training)
 
-# identify WAP used for modelling
+# identify that WAP to use for modelling
 training <- RankTraining(training, trainingVert)
+MaxWAPCount <- training %>% group_by(MaxWap) %>% summarise(MaxCount=n())
+ModelList <- CreateRegressionModels(training)
+
   
+# Vertical data-set of Testing
+#testingVert  <- ConvertToVerticalData(testing)
+testing <- RankTesting(testing, testingVert,MaxWAPCount)
+testingResult <- ApplyRegressionModels(testing, ModelList)
 
 
 
-
-
-RegModelList <- vector(mode="list", length=520)
 
 
 

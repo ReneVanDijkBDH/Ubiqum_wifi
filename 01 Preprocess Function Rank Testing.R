@@ -1,4 +1,4 @@
-RankTraining <- function(WAPData, VertData){
+RankTesting <- function(WAPData, VertData, MaxWAPCount){
   #WAPData <- DataProcessing
   
   #Rank signals by observation
@@ -16,25 +16,33 @@ RankTraining <- function(WAPData, VertData){
     WAPData <- WAPData[-NoSignalIDs$ObservationID,]
   }
   
+  # set minimum records in training-set required
+  MinCount <- 20
+  MaxWAPCount <- MaxWAPCount %>% filter(MaxCount>=MinCount)
   
+  # remove all records in vert below minimum
+  TopRankData <- testingVert %>% left_join(MaxWAPCount, by=c("WAP" ="MaxWap")) %>%
+    filter(!is.na(MaxCount))
+
+
   # only take into consideration top X ranked records 
-  TopRank <-5
-  TopRankData <- VertData %>% filter(ranking<=TopRank)
+  #TopRank <-5
+  #TopRankData <- VertData %>% filter(ranking<=TopRank)
   
-  # Count Rank 1 for every WAP
-  WAPMAX <- VertData %>% filter(ranking==1) %>% group_by(WAP) %>% summarise(countmax = n())
+  # SelectCount Rank 1 for every WAP
+  #WAPMAX <- VertData %>% filter(ranking==1) %>% group_by(WAP) %>% summarise(countmax = n())
   
   # add number of top rankings
-  TopRankData <- TopRankData %>% left_join(WAPMAX, "WAP")
+  #TopRankData <- TopRankData %>% left_join(WAPMAX, "WAP")
   
   # find WAP with max number of top tankings in top 5
-  TopRankData <- arrange(TopRankData, ObservationID, -countmax)
+  TopRankData <- arrange(TopRankData, ObservationID, -WAPSignal)
   TopRankWAP <- TopRankData[!duplicated(TopRankData$ObservationID),]
   
   # add maximum WAP to data-set
   WAPData <- WAPData %>% 
     left_join(TopRankWAP %>% 
-                select(ObservationID,WAP,WAPSignal,ranking) %>%
+                select(ObservationID,WAP,WAPSignal) %>%
                 rename(MaxWap=WAP),"ObservationID")
   
   return(WAPData)

@@ -13,7 +13,7 @@ FilterTestingForWAP <- function(testing, TrainingAttributes, WAP) {
   Testing1WAP <- testing %>% filter(MaxWap==WAP)
 
   # create same data structure as training for testing
-  LoopCol=ncol(Testing1WAP)
+  LoopCol<-ncol(Testing1WAP)
   while (LoopCol>=1) {
     ifelse(colnames(Testing1WAP[LoopCol]) %in% TrainingAttributes,
            Testing1WAP <- Testing1WAP,
