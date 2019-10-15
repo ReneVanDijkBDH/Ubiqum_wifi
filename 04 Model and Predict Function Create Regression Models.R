@@ -42,8 +42,8 @@ while(loopmodel<= nrow(WAPList)){
     
     
     
-    set.seed(456)
-    trctrl <- trainControl(method="repeatedcv",repeats = 1) 
+    #set.seed(456)
+    #trctrl <- trainControl(method="repeatedcv",repeats = 1) 
     #KNNModelLong <- train(LONGITUDE ~ . - LATITUDE - FLOOR - BUILDINGID - ObservationID, 
     #                      data = training, 
     #                      method = "knn", 
@@ -58,21 +58,21 @@ while(loopmodel<= nrow(WAPList)){
     #                     preProcess = c("center","scale"), 
     #                     tuneLength = 10)
   #Training1WAP <- Training1WAP %>% select(WAP496,WAP061, WAP012,WAP070,WAP077, WAP117,WAP249, WAP332, FLOOR)
-    Training1WAP <- Training1WAP[,-nearZeroVar(Training1WAP)]
+    #Training1WAP <- Training1WAP[,-nearZeroVar(Training1WAP)]
     
-    KNNModelFloor <- train(FLOOR ~ .- LATITUDE - LONGITUDE  -
-                             SPACEID - RELATIVEPOSITION - USERID - PHONEID - TIMESTAMP - 
-                             - ObservationID - MaxWap - WAPSignal - ranking , 
-                         data = Training1WAP, 
-                         method = "knn", 
-                         trControl = trctrl, 
-                         preProcess = c("center","scale"), 
-                         tuneLength = 10)
+    #KNNModelFloor <- train(FLOOR ~ .- LATITUDE - LONGITUDE  -
+    #                         SPACEID - RELATIVEPOSITION - USERID - PHONEID - TIMESTAMP - 
+    #                         - ObservationID - MaxWap - WAPSignal - ranking , 
+    #                     data = Training1WAP, 
+    #                     method = "knn", 
+    #                     trControl = trctrl, 
+    #                     preProcess = c("center","scale"), 
+    #                     tuneLength = 10)
     
     
     
     # store models  
-    WAP1models =list(TrainingAttributes, RegModelLong, RegModelLat,KNNModelFloor)
+    WAP1models =list(TrainingAttributes, RegModelLong, RegModelLat)
     ModelList[[WAPNr]] <- WAP1models
   }
   loopmodel=loopmodel+1

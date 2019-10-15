@@ -24,7 +24,42 @@ KNNModelFloor <- train(FLOOR ~ .- LATITUDE - LONGITUDE  -
 
 KNNModelFloor <- train(FLOOR ~ . , 
                        data = B0Select, 
-                       method = "rf", 
+                       method = "knn", 
                        trControl = trctrl, 
                        preProcess = c("center","scale"), 
                        tuneLength = 10)
+
+#KNN prediction & results
+KNNPredictFloor <- predict(KNNModelFloor, newdata = B0Testing)
+
+B0Testing <- testing %>% filter(BUILDINGID==0 & MaxWap!="WAP248")
+
+postResample(B0Testing$FLOOR,KNNPredictFloor)
+
+FloorWAP <- trainingVert %>% filter(BUILDINGID==0 & WAPSignal!=0) %>% group_by(WAP,FLOOR) %>% 
+       summarise(tot=n(),avg=mean(WAPSignal)) #%>% filter(avg!=0)
+
+B0Select$Top1F0 <- B0Select %>% left_join(FloorWAP %>% filter(FLOOR==0),by=c("MaxWap"="WAP")) %>% 
+  select(avg) %>% rename("Top1F0" = "avg")
+
+B0Select$Top1F1 <- B0Select %>% left_join(FloorWAP %>% filter(FLOOR==1),by=c("MaxWap"="WAP")) %>% 
+  select(avg) %>% rename("Top1F1" = "avg")
+
+B0Select$Top1F2 <- B0Select %>% left_join(FloorWAP %>% filter(FLOOR==2),by=c("MaxWap"="WAP")) %>% 
+  select(avg) %>% rename("Top1F2" = "avg")
+
+B0Select$Top1F3 <- B0Select %>% left_join(FloorWAP %>% filter(FLOOR==3),by=c("MaxWap"="WAP")) %>% 
+  select(avg) %>% rename("Top1F3" = "avg")
+
+
+B0Select[is.na(B0Select)] <- 0 
+B0Select$Top1F0[is.na(B0Select$Top1F0)] <-0
+B0Select$Top1F1[is.na(B0Select$Top1F1)] <-0
+B0Select$Top1F2[is.na(B0Select$Top1F2)] <-0
+B0Select$Top1F3[is.na(B0Select$Top1F3)] <-0
+
+B0Select$Top1F0 <- as.numeric(B0Select$Top1F0)
+
+
+head(trainingVert %>% filter(BUILDINGID==0) %>% group_by(WAP) %>% summarise(n(),mean(WAPSignal)),20)
+
