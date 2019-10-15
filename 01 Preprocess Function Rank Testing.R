@@ -1,5 +1,8 @@
 RankTesting <- function(WAPData, VertData, MaxWAPCount){
+  #WAPData <- testing
+  #VertData <- testingVert
   #WAPData <- DataProcessing
+  #VertData <- validationVert  
   
   #Rank signals by observation
   VertData <- VertData %>%
@@ -21,7 +24,7 @@ RankTesting <- function(WAPData, VertData, MaxWAPCount){
   MaxWAPCount <- MaxWAPCount %>% filter(MaxCount>=MinCount)
   
   # remove all records in vert below minimum
-  TopRankData <- testingVert %>% left_join(MaxWAPCount, by=c("WAP" ="MaxWap")) %>%
+  TopRankData <- VertData %>% left_join(MaxWAPCount, by=c("WAP" ="MaxWap")) %>%
     filter(!is.na(MaxCount))
 
 
@@ -44,6 +47,12 @@ RankTesting <- function(WAPData, VertData, MaxWAPCount){
     left_join(TopRankWAP %>% 
                 select(ObservationID,WAP,WAPSignal) %>%
                 rename(MaxWap=WAP),"ObservationID")
+  
+  # add column ranking (required for modelling purpose)
+  WAPData$ranking <- 0
+  
+  # remove records where max signal is 0 
+  WAPData <- WAPData %>% filter(WAPSignal>0)
   
   return(WAPData)
 }

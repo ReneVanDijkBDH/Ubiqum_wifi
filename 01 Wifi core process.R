@@ -241,6 +241,7 @@ TestingKNNBuilding <- CalculatePredictedBuilding(testing, KNNPredictLong, KNNPre
 
 TestingResults <- TestingRegBuilding
 TestingResults <- TestingRegWAPBuilding
+TestingResults <- testingResult
 #TestingResults <- TestingKNNBuilding
 
 # count errors per building
@@ -286,9 +287,40 @@ ggplot(TestingResults %>% filter(abs(LongError) > 0 ),
   xlim(-7700,-7300) +
   ylim(4864700, 4865100)
 
+# error distribution
+hist(TestingResults$LongError)
+hist(TestingResults$LatError)
+
 #R2 Longitude & latitude
 cor(TestingResults$LONGITUDE,TestingResults$PredictLong)^2
 cor(TestingResults$LATITUDE,TestingResults$PredictLat)^2
+
+#Root Mean Square error
+RMSE(TestingResults$LONGITUDE,TestingResults$PredictLong)
+RMSE(TestingResults$LATITUDE,TestingResults$PredictLat)
+
+
+#standard deviation
+sd(TestingResults$LongError)
+sd(TestingResults$LatError)
+
+#Euclidean Distance
+sqrt(sum((TestingResults$LONGITUDE-TestingResults$PredictLong)^2))
+sqrt(sum((TestingResults$LATITUDE-TestingResults$PredictLat)^2))
+
+errorRange <- TestingResults %>% filter(LatError>-50 & LatError<50)
+errorRange <- TestingResults %>% filter(abs(LatError)>20)
+hist(errorRange$LatError)
+
+# Plot Long error vc Lat error
+ggplot(TestingResults, 
+       aes(x=LongError, y=LatError, color=BUILDINGID)) +
+  geom_point(size=2, shape=23) + 
+  scale_color_gradient(low="green", high="red") + 
+  xlim(-100,100) +
+  ylim(-100, 100)
+
+
 
 # Results per building
 ResultsB0 <- TestingResults %>% filter(BUILDINGID==0)

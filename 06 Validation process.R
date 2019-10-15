@@ -9,13 +9,15 @@ DataProcessing$ObservationID <- seq_len(nrow(DataProcessing))
 DataProcessing <- RescaleRSSI(DataProcessing)
 
 # create vertical dataframe for analysing and query purposes
-VertData <- ConvertToVerticalData(DataProcessing)
+#validationVert <- ConvertToVerticalData(DataProcessing)
+
+DataProcessing <- RankTesting(DataProcessing, validationVert,MaxWAPCount)
+testingResult <- ApplyRegressionModels(DataProcessing, ModelList)  
 
 # remove records without signal, identify WAP with max signal 
-DataProcessing <- ProcessSignals(DataProcessing,VertData)
+#DataProcessing <- ProcessSignals(DataProcessing,VertData)
 
-ValidationResult <- LinearRegressionMaxWAPModel(training, DataProcessing)
+#ValidationResult <- LinearRegressionMaxWAPModel(training, DataProcessing)
 
 #problem WAP158. no records in training
 
-  
