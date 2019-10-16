@@ -62,6 +62,8 @@ training <- RankTraining(training, trainingVert)
 MaxWAPCount <- training %>% group_by(MaxWap) %>% summarise(MaxCount=n())
 ModelList <- CreateRegressionModels(training)
 
+ModelList2 <- vector(mode="list", length=520)
+ModelList2 <- CreateFloorModel(training,ModelList2 )
   
 # Vertical data-set of Testing
 #testingVert  <- ConvertToVerticalData(testing)
