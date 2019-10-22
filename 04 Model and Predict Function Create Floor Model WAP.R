@@ -8,11 +8,11 @@ CreateFloorModelWAP <-function(VDataExt, ModelList,  ModelType){
     MinTrainObs <- 10
     trctrl <- trainControl(method="repeatedcv",repeats = 1) 
   } else if (ModelType=="SVM") {
-    MinTrainObs <- 40
+    MinTrainObs <- 20
     trctrl <- trainControl(method = "repeatedcv", number=10, repeats=3)
     grid <- expand.grid(C = c(0.1, 1, 2.5, 5))
   } else if (ModelType=="RF") {
-    MinTrainObs <- 100
+    MinTrainObs <- 20
     trctrl <- trainControl(method="repeatedcv",repeats = 1) 
   }
 
@@ -31,15 +31,18 @@ CreateFloorModelWAP <-function(VDataExt, ModelList,  ModelType){
     #select data for specific WAP
     WAPData           <- VDataExt %>% 
                             filter(WAPSignal >0 & WAP==WAPCol) %>% 
-                            select(ObservationID,WAP,FLOOR,DistanceBucket, SignalBucket, Quadrant)
-    WAPData$FLOOR     <- as.factor(WAPData$FLOOR)
+                            select(ObservationID,FLOOR,BUILDINGID, LONGITUDE, LATITUDE, WAPSignal, Quadrant)
+                            #select(ObservationID,FLOOR,Distance, WAPSignal, Quadrant)
+                            #select(ObservationID,FLOOR,DistanceBucket, SignalBucket, Quadrant)
+                            #select(ObservationID,WAP,FLOOR,DistanceBucket, SignalBucket, Quadrant)
+    WAPData$FLOOR     <- factor(WAPData$FLOOR)
     
     #create model when enough records in selected data
     ModelFloor <- NULL
     if(nrow(WAPData)>MinTrainObs){
       set.seed(456)
       if(ModelType=="KNN") {
-        ModelFloor <- train(FLOOR ~ . - ObservationID -WAP , 
+        ModelFloor <- train(FLOOR ~ . - ObservationID  , 
                             data = WAPData, 
                             method = "knn", 
                             trControl = trctrl, 
@@ -55,7 +58,7 @@ CreateFloorModelWAP <-function(VDataExt, ModelList,  ModelType){
                             #tuneGrid = grid,
                             tuneLength = 10)
       } else if (ModelType=="RF") {
-        RFModel <- train(FLOOR ~ . - ObservationID, 
+        ModelFloor <- train(FLOOR ~ .- ObservationID , 
                          data = WAPData, 
                          method = "rf", 
                          trControl = trctrl, 

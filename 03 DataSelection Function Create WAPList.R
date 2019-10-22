@@ -65,8 +65,8 @@ VDataExt$DistanceBucket <- as.factor(VDataExt$DistanceBucket)
 VDataExt$SignalBucket <- as.factor(VDataExt$SignalBucket)
 VDataExt <- VDataExt %>% filter(!is.na(aant))
 
-ggplot(VDataExt %>% filter(WAP=="WAP179"&WAPSignal!=0 &WAPSignal<80), aes(x=Distance, y=WAPSignal, color=FLOOR)) +
-  geom_point(size=2, shape=23) + facet_grid(. ~ Quadrant)
+ggplot(VDataExt %>% filter(WAP=="WAP108"&WAPSignal!=0 &WAPSignal<80), aes(x=Distance, y=WAPSignal, color=FLOOR)) +
+  geom_point(size=2, shape=23) + facet_grid(DistanceBucket ~ SignalBucket)
 
 VFloor <- VData %>%  
   filter(WAPSignal>0 & WAPSignal<80 &USERID!=14 &USERID!=6) %>%

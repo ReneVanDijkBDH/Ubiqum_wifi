@@ -58,7 +58,7 @@ arrange(VData %>% filter(LONGITUDE> -7450 & LONGITUDE< -7370 &
 
 
 # distribution Longitude of single WAP
-WAPNR <- "WAP179"
+WAPNR <- "WAP053"
 VData$FLOOR <- as.factor(VData$FLOOR)
 
 #LONGITUDE
