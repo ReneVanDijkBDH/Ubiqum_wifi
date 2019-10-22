@@ -23,23 +23,6 @@ DataAllBuildings <- read.csv('../Data/trainingData.csv')
 # add unique row ID for reference
 DataAllBuildings$ObservationID <- seq_len(nrow(DataAllBuildings))
 
-# Divide dataset in smaller sets per building
-#DataBuilding0 <- ExtractData1Building(DataAllBuildings, BuildingID = 0)
-#DataBuilding1 <- ExtractData1Building(DataAllBuildings, BuildingID = 1)
-#DataBuilding2 <- ExtractData1Building(DataAllBuildings, BuildingID = 2)
-
-# summarize data
-#DataB0_FloorSpaces <- DataBuilding0 %>% group_by(FLOOR, SPACEID) %>% summarise(obs=n())
-
-# select small part of data
-#Spacelist <- c(106,116,120)
-#Spacelist <- c(106,116,120,107,110,111,112)
-#Spacelist <- c(106,116,120,107,110,111,112,113,114,115)
-#DataB0_F0_Spaces <- ExtractData1FloorSpace(DataBuilding0, FloorID = 0,Spacelist)
-
-# rescale RSSI value
-#DataB0_F0_Spaces <- RescaleRSSI(DataB0_F0_Spaces)
-#DataBuilding0 <- RescaleRSSI(DataBuilding0)
 DataAllBuildings <- RescaleRSSI(DataAllBuildings)
 
 #define dataset for modelling
@@ -56,24 +39,82 @@ testing <- DataModel[-training_indices,]
 
 # Vertical data-set of Training 
 #trainingVert <- ConvertToVerticalData(training)
+#saveRDS(trainingVert,'../Data/clean_data/trainingVert.rds')
+TrainingVert <- readRDS('../Data/clean_data/trainingVert.rds')
+#TrainVertTop10 <- VertTop10(TrainingVert)
+#saveRDS(TrainVertTop10,'../Data/clean_data/TrainVertTop10.rds')
 
 # identify that WAP to use for modelling
 training <- RankTraining(training, trainingVert)
 MaxWAPCount <- training %>% group_by(MaxWap) %>% summarise(MaxCount=n())
+
+# Creat model for Long and Lat 
 ModelList <- CreateRegressionModels(training)
 
-ModelList2 <- vector(mode="list", length=520)
-ModelList2 <- CreateFloorModel(training,ModelList2 )
-  
 # Vertical data-set of Testing
 #testingVert  <- ConvertToVerticalData(testing)
+TestingVert <- readRDS('../Data/clean_data/testingVert.rds')
+#TestingVertTop10 <- VertTop10(TestingVert)
+#saveRDS(TestingVertTop10,'../Data/clean_data/TestingVertTop10.rds')
+
+# Predict Long, Lat and calculate Building
 testing <- RankTesting(testing, testingVert,MaxWAPCount)
 testingResult <- ApplyRegressionModels(testing, ModelList)
 
 
+#create models for floor: KNN
+FloorModelB0 <- vector(mode="list", length=520)
+FloorModelB0 <- CreateFloorModel(training, FloorModelB0, 0, "KNN")
+saveRDS(FloorModelB0,'../Data/clean_data/FloorModelB0.rds')
+
+FloorModelB1<- vector(mode="list", length=520)
+FloorModelB1 <- CreateFloorModel(training, FloorModelB1, 1, "KNN")
+saveRDS(FloorModelB1,'../Data/clean_data/FloorModelB1.rds')
+
+FloorModelB2 <- vector(mode="list", length=520)
+FloorModelB2 <- CreateFloorModel(training, FloorModelB2, 2, "KNN" )
+saveRDS(FloorModelB2,'../Data/clean_data/FloorModelB2.rds')
+
+#create models for floor: SVM
+FloorModelB0SVM <- vector(mode="list", length=520)
+FloorModelB0SWM  <- CreateFloorModel(training, FloorModelB0SVM, 0, "SVM")
+saveRDS(FloorModelB0SVM,'../Data/clean_data/FloorModelB0SVM.rds')
+# probleem WAP447
+
+FloorModelB1SVM <- vector(mode="list", length=520)
+FloorModelB1SWM  <- CreateFloorModel(training, FloorModelB1SVM, 1, "SVM")
+saveRDS(FloorModelB1SVM,'../Data/clean_data/FloorModelB1SVM.rds')
+
+#create models for floor: Random Forest
+FloorModelB0RF <- vector(mode="list", length=520)
+FloorModelB0RF  <- CreateFloorModel(training, FloorModelB0RF, 0, "RF")
+saveRDS(FloorModelB0RF,'../Data/clean_data/FloorModelB0RF.rds')
+
+FloorModelB1RF <- vector(mode="list", length=520)
+FloorModelB1RF  <- CreateFloorModel(training, FloorModelB1RF, 1, "RF")
+saveRDS(FloorModelB1RF,'../Data/clean_data/FloorModelB1RF.rds')
+
+FloorModelB2RF <- vector(mode="list", length=520)
+FloorModelB2RF  <- CreateFloorModel(training, FloorModelB2RF, 2, "RF")
+saveRDS(FloorModelB2RF,'../Data/clean_data/FloorModelB2RF.rds')
 
 
 
+
+
+#Predict Floor
+TestingVertTop10 <- readRDS('../Data/clean_data/TestingVertTop10.rds')
+TestingFloorResults <- ApplyFloorModel(TestingVertTop10)
+saveRDS(TestingFloorResults,'../Data/clean_data/TestingFloorResults.rds')
+
+
+FloorModelWAPKNN <- vector(mode="list", length=520)
+FloorModelWAPKNN <- CreateFloorModelWAP(VDataExt, FloorModelWAPKNN, "KNN")
+
+
+
+
+##################################
 
 # create vertical dataframe for analysing and query purposes
 VertData <- ConvertToVerticalData(DataAllBuildings)
@@ -190,9 +231,9 @@ DataModel<- DataModel[, !names(DataModel) %in%
 
 
 #apply linear model
-RegModelLong <- lm(LONGITUDE ~ . - LATITUDE - FLOOR - BUILDINGID - ObservationID - MaxWap,
+RegModelLong <- lm(LONGITUDE ~ . - LATITUDE - FLOOR - BUILDINGID - ObservationID ,
                    training )
-RegModelLat <- lm(LATITUDE ~ . -LONGITUDE - FLOOR - BUILDINGID - ObservationID - MaxWap, 
+RegModelLat <- lm(LATITUDE ~ . -LONGITUDE - FLOOR - BUILDINGID - ObservationID , 
                   training)
 
 # predict values for test set
@@ -239,100 +280,6 @@ TestingKNNBuilding <- CalculatePredictedBuilding(testing, KNNPredictLong, KNNPre
 
 
 ######################
-##Analyse errors
-
-TestingResults <- TestingRegBuilding
-TestingResults <- TestingRegWAPBuilding
-TestingResults <- testingResult
-#TestingResults <- TestingKNNBuilding
-
-# count errors per building
-TestingResults %>% group_by(BUILDINGID) %>% 
-  summarise(obs =n(), Buildingerrors=sum(BuildingError), rate=1-sum(BuildingError)/n())
-
-# count errors in total
-TestingResults %>% 
-  summarise(obs =n(), Buildingerrors=sum(BuildingError), rate=1-sum(BuildingError)/n())
-
-
-# filter data on location
-TestingResults %>% filter(LONGITUDE> -7450 & LONGITUDE< -7370 & 
-                            LATITUDE>4864800 & LATITUDE<4864820 & BuildingError==1 )
-
-# errors per specific location
-TestingResults %>% group_by(LONGITUDE, LATITUDE, BuildingError) %>% 
-  summarise(number =n()) %>% 
-  filter(LONGITUDE> -7450 & LONGITUDE< -7370 & 
-           LATITUDE>4864800 & LATITUDE<4864820 & BuildingError==1 )
-
-
-# visualize errors
-
-# actual location building
-ggplot(TestingResults %>% filter(abs(LongError) > 0 ), 
-       aes(x=LONGITUDE, y=LATITUDE, color=BuildingError)) +
-  geom_point(size=2, shape=23) + 
-  scale_color_gradient(low="grey", high="red")+
-  xlim(-7700,-7300) +
-  ylim(4864700, 4865100)
-  #xlim(-7600,-7200) +
-  #ylim(4864600, 4865000)
-
-
-#predicted location
-ggplot(TestingResults %>% filter(abs(LongError) > 0 ), 
-       aes(x=PredictLong, y=PredictLat, color=BuildingError)) +
-  geom_point(size=2, shape=23) + 
-  scale_color_gradient(low="grey", high="red")+ 
-  geom_abline(intercept = 4876000, slope = 1.506, color="blue", size=0.5)+ 
-  geom_abline(intercept = 4876350, slope = 1.506, color="blue", size=0.5)+
-  xlim(-7700,-7300) +
-  ylim(4864700, 4865100)
-
-# error distribution
-hist(TestingResults$LongError)
-hist(TestingResults$LatError)
-
-#R2 Longitude & latitude
-cor(TestingResults$LONGITUDE,TestingResults$PredictLong)^2
-cor(TestingResults$LATITUDE,TestingResults$PredictLat)^2
-
-#Root Mean Square error
-RMSE(TestingResults$LONGITUDE,TestingResults$PredictLong)
-RMSE(TestingResults$LATITUDE,TestingResults$PredictLat)
-
-
-#standard deviation
-sd(TestingResults$LongError)
-sd(TestingResults$LatError)
-
-#Euclidean Distance
-sqrt(sum((TestingResults$LONGITUDE-TestingResults$PredictLong)^2))
-sqrt(sum((TestingResults$LATITUDE-TestingResults$PredictLat)^2))
-
-errorRange <- TestingResults %>% filter(LatError>-50 & LatError<50)
-errorRange <- TestingResults %>% filter(abs(LatError)>20)
-hist(errorRange$LatError)
-
-# Plot Long error vc Lat error
-ggplot(TestingResults, 
-       aes(x=LongError, y=LatError, color=BUILDINGID)) +
-  geom_point(size=2, shape=23) + 
-  scale_color_gradient(low="green", high="red") + 
-  xlim(-100,100) +
-  ylim(-100, 100)
-
-
-
-# Results per building
-ResultsB0 <- TestingResults %>% filter(BUILDINGID==0)
-ResultsB1 <- TestingResults %>% filter(BUILDINGID==1)
-ResultsB2 <- TestingResults %>% filter(BUILDINGID==2)
-
-cor(ResultsB0$LATITUDE,ResultsB0$PredictLat)^2
-cor(ResultsB1$LATITUDE,ResultsB1$PredictLat)^2
-cor(ResultsB2$LATITUDE,ResultsB2$PredictLat)^2
-
 
 # ideas:
 # Convert signal to log

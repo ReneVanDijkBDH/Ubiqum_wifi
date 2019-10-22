@@ -19,5 +19,17 @@ testingResult <- ApplyRegressionModels(DataProcessing, ModelList)
 
 #ValidationResult <- LinearRegressionMaxWAPModel(training, DataProcessing)
 
-#problem WAP158. no records in training
+
+ValidationVert <- readRDS('../Data/clean_data/validationVert.rds')
+#ValidationVertTop10 <- VertTop10(ValidationVert)
+#saveRDS(ValidationVertTop10,'../Data/clean_data/ValidationVertTop10.rds')
+
+
+#Predict Floor
+ValidationVertTop10 <- readRDS('../Data/clean_data/ValidationVertTop10.rds')
+ValidationFloorResults <- ApplyFloorModel(ValidationVertTop10)
+saveRDS(ValidationFloorResults,'../Data/clean_data/ValidationFloorResults.rds')
+
+
+
 

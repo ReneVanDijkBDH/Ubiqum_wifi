@@ -1,4 +1,4 @@
-CreateFloorModel <-function(trainingFloor, ModelList, Building, ModelType){
+CreateFloorModelWAP <-function(VDataExt, ModelList,  ModelType){
   #trainingFloor <- training  
   #Building <- 0
 
@@ -19,22 +19,27 @@ CreateFloorModel <-function(trainingFloor, ModelList, Building, ModelType){
   # loop through all WAP's and create a model
   WAPNr <- 1
   while (WAPNr<=520){
-    WAPCol <- colnames(trainingFloor[WAPNr])
+    if(WAPNr<10) {
+       WAPCol <- paste("WAP00", WAPNr,sep="")
+    } else if (WAPNr<100) {
+      WAPCol <- paste("WAP0", as.character(WAPNr), sep="")
+    } else {
+      WAPCol <- paste("WAP", as.character(WAPNr), sep="")
+    }
     print(WAPCol)
   
     #select data for specific WAP
-    WAPData           <- trainingFloor %>% 
-                            filter(BUILDINGID==Building & trainingFloor[,WAPNr] >0) %>% 
-                            select(ObservationID,FLOOR,LONGITUDE,LATITUDE, WAPCol)
+    WAPData           <- VDataExt %>% 
+                            filter(WAPSignal >0 & WAP==WAPCol) %>% 
+                            select(ObservationID,WAP,FLOOR,DistanceBucket, SignalBucket, Quadrant)
     WAPData$FLOOR     <- as.factor(WAPData$FLOOR)
-    names(WAPData)[5] <- "WAPSignal"
-  
+    
     #create model when enough records in selected data
     ModelFloor <- NULL
     if(nrow(WAPData)>MinTrainObs){
       set.seed(456)
       if(ModelType=="KNN") {
-        ModelFloor <- train(FLOOR ~ . - ObservationID , 
+        ModelFloor <- train(FLOOR ~ . - ObservationID -WAP , 
                             data = WAPData, 
                             method = "knn", 
                             trControl = trctrl, 
