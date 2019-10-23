@@ -8,7 +8,7 @@
 ApplyFloorModelWAP <-function(TestFloorVert, WAPList){
 
 # select top X WAP's for identifying f
-TopX <- 3
+TopX <- 5
 TestFloorVert <- TestFloorVert %>% filter(ranking<=TopX)
 TestFloorVert <- TestFloorVert %>% left_join(WAPList, "WAP")
 TestFloorVert$Distance <- with(TestFloorVert,sqrt((Long_Max-PredictLong)^2+(Lat_Max-PredictLat)^2))
@@ -37,6 +37,7 @@ TestTopWAP   <-  TestFloorVert %>%
 #}
 
 FloorModel <- readRDS('../Data/clean_data/FloorModelWAPKNN.rds')
+#FloorModel <- readRDS('../Data/clean_data/FloorModelWAPRF.rds')
 
 # loop throug distinct list 
 loopWAP <- 1

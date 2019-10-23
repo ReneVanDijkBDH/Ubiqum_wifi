@@ -1,5 +1,6 @@
 #data by WAP
 VData <- readRDS('../Data/clean_data/trainingVert.rds')
+VData <- readRDS('../Data/clean_data/testingVert.rds')
 VData %>% 
   group_by(WAP) %>% 
   filter(WAPSignal!=0) %>% 
@@ -58,15 +59,16 @@ arrange(VData %>% filter(LONGITUDE> -7450 & LONGITUDE< -7370 &
 
 
 # distribution Longitude of single WAP
-WAPNR <- "WAP053"
+WAPNR <- "WAP123"
 VData$FLOOR <- as.factor(VData$FLOOR)
 
 #LONGITUDE
-ggplot(VData %>% filter(WAP==WAPNR & WAPSignal>0 &WAPSignal<80 ), 
+ggplot(VData %>% filter(WAP==WAPNR & WAPSignal>0 &WAPSignal<80 & USERID!=6 & USERID!=14 ), 
        aes(x=LONGITUDE, y=WAPSignal, color=FLOOR)) +
   geom_point(size=2, shape=23)  +  
   theme(panel.background = element_blank(),
         panel.grid.major = element_line(size = 0.5, linetype = 'solid',colour = "grey"))
+
 
 #mean & median
 VData %>%  filter(WAP==WAPNR & WAPSignal>0 &WAPSignal<80 ) %>%

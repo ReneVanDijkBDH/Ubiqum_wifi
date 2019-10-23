@@ -7,6 +7,7 @@ TestingResults <- PredictObs
 TestingResults <- readRDS('../Data/clean_data/TestingResults.rds')
 TestingResults <- readRDS('../Data/clean_data/result test obv WAP zonder filter.rds')
 TestingResults <- readRDS('../Data/clean_data/result test obv WAP met div filters.rds')
+TestingResults <- validationResults
 
 #TestingResults <- TestingKNNBuilding
 

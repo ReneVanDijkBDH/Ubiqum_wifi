@@ -30,7 +30,8 @@ CreateFloorModelWAP <-function(VDataExt, ModelList,  ModelType){
   
     #select data for specific WAP
     WAPData           <- VDataExt %>% 
-                            filter(WAPSignal >0 & WAP==WAPCol) %>% 
+                            #filter(WAPSignal >0 & WAP==WAPCol) %>% 
+                            filter(WAPSignal >0 & WAP==WAPCol & WAPSignal<80 & USERID!=14 & USERID!=6) %>%
                             select(ObservationID,FLOOR,BUILDINGID, LONGITUDE, LATITUDE, WAPSignal, Quadrant)
                             #select(ObservationID,FLOOR,Distance, WAPSignal, Quadrant)
                             #select(ObservationID,FLOOR,DistanceBucket, SignalBucket, Quadrant)
@@ -49,6 +50,7 @@ CreateFloorModelWAP <-function(VDataExt, ModelList,  ModelType){
                             preProcess = c("center","scale"), 
                             tuneGrid = expand.grid(k = c(3,5,7,9)),
                             tuneLength = 10)
+        # ModelFloor$results$Accuracy[match(ModelFloor$bestTune$k,ModelFloor$results$k)]
       } else if (ModelType=="SVM") {    
         ModelFloor <- train(FLOOR ~ . - ObservationID ,  
                             data = WAPData, 
@@ -58,12 +60,12 @@ CreateFloorModelWAP <-function(VDataExt, ModelList,  ModelType){
                             #tuneGrid = grid,
                             tuneLength = 10)
       } else if (ModelType=="RF") {
-        ModelFloor <- train(FLOOR ~ .- ObservationID , 
-                         data = WAPData, 
-                         method = "rf", 
-                         trControl = trctrl, 
-                         preProcess = c("center","scale"), 
-                         tuneLength = 10)
+        ModelFloor <- train(FLOOR ~ . - ObservationID  , 
+                            data = WAPData, 
+                            method = "rf", 
+                            trControl = trctrl, 
+                            preProcess = c("center","scale"), 
+                            tuneLength = 10)
       }
       #store resulting model in ModelList
       if(!is.na(ModelList)){

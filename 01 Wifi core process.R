@@ -40,16 +40,22 @@ testing <- DataModel[-training_indices,]
 # Vertical data-set of Training 
 #trainingVert <- ConvertToVerticalData(training)
 #saveRDS(trainingVert,'../Data/clean_data/trainingVert.rds')
-TrainingVert <- readRDS('../Data/clean_data/trainingVert.rds')
+trainingVert <- readRDS('../Data/clean_data/trainingVert.rds')
 #TrainVertTop10 <- VertTop10(TrainingVert)
 #saveRDS(TrainVertTop10,'../Data/clean_data/TrainVertTop10.rds')
+
+#Create list of WAP's
+WAPList <- CreateWAPList(trainingVert)
 
 # identify that WAP to use for modelling
 training <- RankTraining(training, trainingVert)
 MaxWAPCount <- training %>% group_by(MaxWap) %>% summarise(MaxCount=n())
+saveRDS(MaxWAPCount,'../Data/clean_data/MaxWAPCount.rds')
 
 # Creat model for Long and Lat 
-ModelList <- CreateRegressionModels(training)
+#ModelList <- CreateRegressionModels(training)
+
+
 
 # Vertical data-set of Testing
 #testingVert  <- ConvertToVerticalData(testing)
@@ -58,9 +64,45 @@ TestingVert <- readRDS('../Data/clean_data/testingVert.rds')
 #saveRDS(TestingVertTop10,'../Data/clean_data/TestingVertTop10.rds')
 
 # Predict Long, Lat and calculate Building
+ModelList <-readRDS('../Data/clean_data/.rds')
 testing <- RankTesting(testing, testingVert,MaxWAPCount)
-testingResult <- ApplyRegressionModels(testing, ModelList)
+#testingResult <- ApplyRegressionModels(testing, ModelList)
 
+
+testingResult <- PredictLongLatBuilding(TestingVertTop10,WAPList) 
+
+########FLOOR WAP
+# Extend Vertical dataframe
+TrainingVertExtended <- CreateExtendedVertical(trainingVert, WAPList)
+
+FloorModelWAPKNN <- vector(mode="list", length=520)
+#FloorModelWAPKNN <- CreateFloorModelWAP(TrainingVertExtended, FloorModelWAPKNN, "KNN")
+saveRDS(FloorModelWAPKNN,'../Data/clean_data/FloorModelWAPKNN.rds')
+
+FloorModelWAPRF <- vector(mode="list", length=520)
+FloorModelWAPRF <- CreateFloorModelWAP(TrainingVertExtended, FloorModelWAPRF, "RF")
+saveRDS(FloorModelWAPRF,'../Data/clean_data/FloorModelWAPRF.rds')
+#error 388
+
+TestingVertTop10 <- readRDS('../Data/clean_data/TestingVertTop10.rds')
+testingResults <- readRDS('../Data/clean_data/result test obv WAP met div filters.rds')
+
+TestingVertTop10Extended <- TestingVertTop10 %>% 
+  left_join(testingResults %>% select(ObservationID,PredictLong, PredictLat), "ObservationID")
+TestingVertTop10Extended$BUILDINGID<- as.factor(TestingVertTop10Extended$BUILDINGID)
+
+TestingFloorResults <- ApplyFloorModelWAP(TestingVertTop10Extended, WAPList)
+TestingFloorResults <- TestingFloorResults %>% left_join(testingResults %>% 
+                                      select(ObservationID,PredictLong,PredictLat,PredictBuilding),
+                                        "ObservationID")
+
+#saveRDS(TestingFloorResults,'../Data/clean_data/TestingFloorResults WAPKNN 969.rds')
+
+
+
+
+
+######################################################
 
 #create models for floor: KNN
 FloorModelB0 <- vector(mode="list", length=520)
@@ -108,40 +150,8 @@ TestingFloorResults <- ApplyFloorModel(TestingVertTop10)
 saveRDS(TestingFloorResults,'../Data/clean_data/TestingFloorResults.rds')
 
 
-########FLOOR WAP
-FloorModelWAPKNN <- vector(mode="list", length=520)
-FloorModelWAPKNN <- CreateFloorModelWAP(VDataExt, FloorModelWAPKNN, "KNN")
-saveRDS(FloorModelWAPKNN,'../Data/clean_data/FloorModelWAPKNN.rds')
-
-FloorModelWAPSVM <- vector(mode="list", length=520)
-FloorModelWAPSVM <- CreateFloorModelWAP(VDataExt, FloorModelWAPSVM, "SVM")
-saveRDS(FloorModelWAPSVM,'../Data/clean_data/FloorModelWAPSVM.rds')
-
-TestingVertTop10 <- readRDS('../Data/clean_data/TestingVertTop10.rds')
-
-TestingVertTop10Ext <- TestingVertTop10 %>% 
-  left_join(PredictObs %>% select(ObservationID,PredictLong, PredictLat), "ObservationID")
-TestingVertTop10Ext$BUILDINGID<- as.factor(TestingVertTop10Ext$BUILDINGID)
-
-TestingFloorResults <- ApplyFloorModelWAP(TestingVertTop10Ext, WAPList)
-saveRDS(TestingFloorResults,'../Data/clean_data/TestingFloorResults WAPKNN 969.rds')
 
 
-ValidationVertTop10 <- readRDS('../Data/clean_data/ValidationVertTop10.rds')
-
-
-ValidationVertTop10Ext <- ValidationVertTop10 %>% 
-  left_join(PredictObs %>% select(ObservationID,PredictLong, PredictLat), "ObservationID")
-ValidationVertTop10Ext$BUILDINGID<- as.factor(ValidationVertTop10Ext$BUILDINGID)
-
-ValidationFloorResults <- ApplyFloorModelWAP(ValidationVertTop10Ext, WAPList)
-saveRDS(TestingFloorResults,'../Data/clean_data/TestingFloorResults WAPKNN 969.rds')
-
-
-ValidationFloorResults$PredictedFloor <- as.factor(ValidationFloorResults$PredictedFloor)
-confusionMatrix(ValidationFloorResults$FLOOR, ValidationFloorResults$PredictedFloor)
-
-DataAllBuildings$WAP144
 
 
 ##################################
